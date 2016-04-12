@@ -1,0 +1,46 @@
+sudo firewall-cmd --permanent --zone=internal --change-interface=enp0s25
+sudo nmcli con mod enp0s25 connection.zone internal
+nmcli con up enp0s25
+sudo firewall-cmd --get-zone-of-interface=enp0s25
+sudo hostnamectl set-hostname Hidarite --pretty
+sudo hostnamectl set-hostname hidarite --static
+nmcli con edit type ethernet con-name enp0s25
+
+# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Virtualization_Deployment_and_Administration_Guide/sect-Installing_the_virtualization_packages-Installing_virtualization_packages_on_an_existing_Red_Hat_Enterprise_Linux_system.html
+sudo yum groupinstall 'Virtualization Host'
+sudo yum install qemu-kvm qemu-img libvirt
+sudo yum install virt-install libvirt-python virt-manager python-virtinst libvirt-client
+
+sudo mkdir /home/isos
+sudo chgrp wheel /home/isos
+sudo chmod 2775 /home/isos
+mkdir /home/isos/centos7
+cd /home/isos/centos7
+curl -LRO 'http://www.gtlib.gatech.edu/pub/centos/7/isos/x86_64/CentOS-7-x86_64-Everything-1511.iso'
+curl -LRO 'http://www.gtlib.gatech.edu/pub/centos/7/isos/x86_64/sha256sum.txt'
+sha256sum -c sha256sum.txt
+
+# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Virtualization_Deployment_and_Administration_Guide/sect-Network_configuration-Bridged_networking.html#sect-Network_configuration-Bridged_networking_in_RHEL
+# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Networking_Guide/sec-Network_Bridging_Using_the_NetworkManager_Command_Line_Tool_nmcli.html
+sudo nmcli con add type bridge ifname br0
+sudo nmcli con modify bridge-br0 bridge.stp no
+
+
+sudo systemctl start libvirtd
+
+# list of os-variant values
+osinfo-query os
+
+
+# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Virtualization_Deployment_and_Administration_Guide/sect-Guest_virtual_machine_installation_overview-Creating_guests_with_virt_install.html
+sudo virt-install \
+   --name=guest1-centos7-64 \
+   --disk path=/var/lib/libvirt/images/guest1-centos7-64.dsk,size=8,sparse=false,cache=none \
+   --graphics spice \
+   --vcpus=1 --ram=512 \
+   --cdrom=$PWD/CentOS-7-x86_64-Everything-1511.iso \
+   --network bridge=br0 \
+   --os-type=linux \
+   --os-variant=centos7.0
+
+#   --location=file://$PWD/CentOS-7-x86_64-Everything-1511.iso \
